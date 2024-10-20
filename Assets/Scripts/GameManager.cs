@@ -1,5 +1,9 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Collections;
+
 
 public class GameManager : MonoBehaviour
 {
@@ -12,7 +16,12 @@ public class GameManager : MonoBehaviour
     private int correctAnswers = 0;  // Tracks the number of correct answers
 
     private float timeRemaining = 60f;  // Set initial time to 60 seconds
-    private bool isGameOver = false;  // Flag to check if the game is over
+    public bool isGameOver = false;  // Flag to check if the game is over
+    public Button restartButton;  // Reference to the Restart Button
+    public ParticleSystem gameOverParticles;  // Reference to the Particle System
+    public bool isTimerPaused = false;  // Flag to control timer pause
+
+
 
     void Awake()
     {
@@ -33,11 +42,12 @@ public class GameManager : MonoBehaviour
         UpdateScoreUI();  // Initialize the score text at the start
         UpdateTimerUI();  // Initialize the timer text at the start
         gameOverText.gameObject.SetActive(false);  // Hide Game Over text initially
+        restartButton.gameObject.SetActive(false);  // Hide Restart Button initially
     }
 
     void Update()
     {
-        if (!isGameOver)
+        if (!isGameOver && !isTimerPaused)
         {
             // Decrease the time remaining
             timeRemaining -= Time.deltaTime;
@@ -47,7 +57,8 @@ public class GameManager : MonoBehaviour
 
             // If time runs out, end the game
             if (timeRemaining <= 0)
-            {
+            {   
+                Debug.Log("Time has run out!");
                 EndGame();
             }
         }
@@ -81,9 +92,51 @@ public class GameManager : MonoBehaviour
         timerText.text = "Time: " + Mathf.CeilToInt(timeRemaining).ToString();
     }
 
-    // Method to end the game when time runs out
-    private void EndGame()
+    
+    public void PauseTimer(float duration)
+{
+    StartCoroutine(PauseTimerCoroutine(duration));
+}
+
+    private IEnumerator PauseTimerCoroutine(float duration)
+{
+    float originalTimeRemaining = timeRemaining;  // Store the original time remaining
+    isTimerPaused = true;  // Pause only the timer
+
+    yield return new WaitForSeconds(duration);  // Wait for the pause duration
+
+    isTimerPaused = false;  // Resume only the timer
+    timeRemaining = originalTimeRemaining;  // Restore the original time remaining
+}
+
+
+
+private void ResetGame()
     {
+        score = 0;  // Initialize score to 0
+        correctAnswers = 0;  // Initialize correct answers
+        timeRemaining = 60f;  // Reset timer
+        isGameOver = false;  // Game not over initially
+
+        UpdateScoreUI();  // Update the score display
+        UpdateTimerUI();  // Update the timer display
+        gameOverText.gameObject.SetActive(false);  // Hide Game Over text
+        restartButton.gameObject.SetActive(false);  // Hide Restart Button
+    }
+
+    public void RestartGame()
+    {
+        Debug.Log("Restarting Game...");
+        ResetGame();  // Call the reset method
+        Destroy(gameObject); //-------------------------
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);  // Reload the current scene
+    }
+
+
+ private void EndGame()
+    {
+        if (isGameOver) return; // Prevent re-entrance if already game over
+
         isGameOver = true;  // Set the game over flag to true
         timeRemaining = 0;  // Clamp the timer to 0
 
@@ -91,6 +144,21 @@ public class GameManager : MonoBehaviour
         gameOverText.text = "Game Over!\nYou answered " + correctAnswers + " questions correctly!";
         gameOverText.gameObject.SetActive(true);  // Show Game Over text
 
+        if (gameOverParticles != null)
+    {
+        gameOverParticles.transform.position = Camera.main.transform.position; // Position it at the camera for visibility
+        gameOverParticles.Play();  // Play particle effect
+    }
+
+        restartButton.gameObject.SetActive(true);  // Show Restart Button
+        restartButton.onClick.AddListener(RestartGame);  // Add listener to the Restart button
+
         Debug.Log("Game Over! Final Score: " + score);
     }
+
+    public int GetScore()
+{
+    return score;  // Return the current score
+}
+
 }

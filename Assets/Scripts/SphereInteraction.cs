@@ -1,65 +1,58 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
 public class SphereInteraction : MonoBehaviour
 {
-    public Canvas questionCanvas;  // Reference to the Canvas
-    public string mathQuestion = "2 + 2 = ?";  // Default math question
-    public string correctAnswer = "4";  // Correct answer for the math question
+    public Canvas questionCanvas;
+    public string mathQuestion = "2 + 2 = ?";
+    public string correctAnswer = "4";
 
-    private bool isGrabbed = false;  // Flag to check if the sphere is grabbed
-    private TextMeshProUGUI questionText;  // Reference to the TextMeshPro text component for the question
-    private TMP_InputField answerInputField;  // Reference to the TMP Input Field
-    private Button submitButton;  // Reference to the submit button
-    private TextMeshProUGUI feedbackText;  // Reference to the feedback text
-    private MeshRenderer sphereRenderer;  // Reference to the sphere's MeshRenderer
+    private bool isGrabbed = false;
+    private TextMeshProUGUI questionText;
+    private TMP_InputField answerInputField;
+    private Button submitButton;
+    private TextMeshProUGUI feedbackText;
+    private MeshRenderer sphereRenderer;
+    private AudioSource audioSource;
+
+    // Add a reference to the particle effect prefab
+    public ParticleSystem correctAnswerParticles;
 
     void Start()
     {
-        // Find the TextMeshPro components in the child objects of the Canvas
         questionText = questionCanvas.GetComponentInChildren<TextMeshProUGUI>();
         answerInputField = questionCanvas.GetComponentInChildren<TMP_InputField>();
         submitButton = questionCanvas.GetComponentInChildren<Button>();
-
-        // Get the MeshRenderer of the sphere
         sphereRenderer = GetComponent<MeshRenderer>();
-
-        // Hide the canvas at the start
         questionCanvas.gameObject.SetActive(false);
-
-        // Create and set up feedback text at the start
         feedbackText = CreateFeedbackText();
-
-        // Add a listener to the submit button
         submitButton.onClick.AddListener(OnSubmitAnswer);
+        audioSource = GetComponent<AudioSource>();
     }
 
     void Update()
     {
-        if (isGrabbed)
+        if (!GameManager.instance.isGameOver && isGrabbed)
         {
-            // Show canvas and set the question text when the sphere is grabbed
             questionCanvas.gameObject.SetActive(true);
             questionText.text = mathQuestion;
-
-            // Make the sphere invisible (disable the MeshRenderer)
             sphereRenderer.enabled = false;
         }
         else
         {
-            // Hide canvas when not grabbed
             questionCanvas.gameObject.SetActive(false);
-
-            // Optionally, re-enable the sphere renderer when the canvas is hidden
-            // You can choose to do this if you want the sphere to reappear after releasing
-            // sphereRenderer.enabled = true;
         }
     }
 
     public void GrabSphere()
     {
         isGrabbed = true;
+        if (audioSource != null)
+        {
+            audioSource.Play();
+        }
     }
 
     public void ReleaseSphere()
@@ -69,7 +62,7 @@ public class SphereInteraction : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!GameManager.instance.isGameOver && other.CompareTag("Player"))
         {
             GrabSphere();
         }
@@ -83,57 +76,49 @@ public class SphereInteraction : MonoBehaviour
         }
     }
 
-    // This method is called when the player clicks the submit button
-   
-public void OnSubmitAnswer()
-{
-    string playerAnswer = answerInputField.text;  // Get the answer from the input field
-
-    // Check if the player's answer is correct
-    if (playerAnswer == correctAnswer)
+    public void OnSubmitAnswer()
     {
-        feedbackText.text = "Correct!";  // Provide positive feedback
-        feedbackText.color = Color.green;  // Set color to green for correct answer
+        string playerAnswer = answerInputField.text;
 
-        // Call UpdateScore with a +5 score and pass true for a correct answer
-        GameManager.instance.UpdateScore(5, true);
+        if (playerAnswer == correctAnswer)
+        {
+            feedbackText.text = "Correct!";
+            feedbackText.color = Color.green;
+
+            // Instantiate and play particle effect at the sphere's position
+            if (correctAnswerParticles != null)
+            {
+                Instantiate(correctAnswerParticles, transform.position, Quaternion.identity);
+            }
+
+            GameManager.instance.UpdateScore(5, true);
+            Debug.Log("Score updated. Current score: " + GameManager.instance.GetScore());
+        }
+        else
+        {
+            feedbackText.text = "Incorrect, try again.";
+            feedbackText.color = Color.red;
+            GameManager.instance.UpdateScore(-5, false);
+            Debug.Log("Score updated. Current score: " + GameManager.instance.GetScore());
+        }
+
+        feedbackText.gameObject.SetActive(true);
     }
-    else
-    {
-        feedbackText.text = "Incorrect, try again.";  // Provide negative feedback
-        feedbackText.color = Color.red;  // Set color to red for incorrect answer
 
-        // Call UpdateScore with a -5 score and pass false for an incorrect answer
-        GameManager.instance.UpdateScore(-5, false);
-    }
-
-    feedbackText.gameObject.SetActive(true);  // Show the feedback text
-}
-
-
-
-    // Method to create feedback text dynamically in the Canvas
     TextMeshProUGUI CreateFeedbackText()
     {
-        // Create a new GameObject for feedback text
         GameObject feedbackObject = new GameObject("FeedbackText");
-        feedbackObject.transform.SetParent(questionCanvas.transform, false);  // Attach it to the Canvas
-
-        // Add TextMeshPro component
+        feedbackObject.transform.SetParent(questionCanvas.transform, false);
         TextMeshProUGUI feedbackTMP = feedbackObject.AddComponent<TextMeshProUGUI>();
-
-        // Customize the text properties
-        feedbackTMP.fontSize = 36;  // Set the font size
-        feedbackTMP.alignment = TextAlignmentOptions.Center;  // Center the text
-        feedbackTMP.text = "";  // Empty text initially
-
-        // Position the feedback text within the Canvas (below input field)
+        feedbackTMP.fontSize = 36;
+        feedbackTMP.alignment = TextAlignmentOptions.Center;
+        feedbackTMP.text = "";
         RectTransform rectTransform = feedbackTMP.GetComponent<RectTransform>();
         rectTransform.sizeDelta = new Vector2(400, 100);
-        rectTransform.anchoredPosition = new Vector2(0, -100);  // Adjust position as necessary
-
-        feedbackTMP.gameObject.SetActive(false);  // Hide the feedback initially
-
+        rectTransform.anchoredPosition = new Vector2(0, -100);
+        feedbackTMP.gameObject.SetActive(false);
         return feedbackTMP;
     }
 }
+
+
