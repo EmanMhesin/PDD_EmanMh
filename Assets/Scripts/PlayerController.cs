@@ -18,20 +18,28 @@ public class PlayerController : MonoBehaviour
     {
         // Get the Rigidbody component attached to the player
         rb = GetComponent<Rigidbody>();
+        isGrounded = true;
     }
 
-    private void Update()
+ 
+
+private void Update()
+{
+    if (GameManager.instance.isGameOver) // Prevent movement if the game is over
+        return;
+
+    // Handle movement and rotation
+    Move();
+    Rotate();
+
+    // Handle jumping
+    if (Input.GetButtonDown("Jump") && isGrounded)
     {
-        // Handle movement and rotation
-        Move();
-        Rotate();
-
-        // Handle jumping
-        if (Input.GetButtonDown("Jump") && isGrounded)
-        {
-            Jump();
-        }
+        Jump();
     }
+}
+
+
 
     private void Move()
     {
